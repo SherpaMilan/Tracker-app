@@ -1,0 +1,12 @@
+.title {
+  color: purple;
+  margin-top: 100px;
+}
+
+.main {
+  min-height: 85vh;
+}
+
+.wrapper {
+  font-family: "PT Serif", serif;
+}
