@@ -49,9 +49,19 @@ export const Registration = () => {
     if (confirmPassword !== rest.password) {
       return toast.error("Password do not match");
     }
-    //checking or reading if there are already account created
+    //reading data from local storage
     const oldUsersStr = localStorage.getItem("users");
     const oldUsers = oldUsersStr ? JSON.parse(oldUsersStr) : [];
+
+    //let's check if user already exist for the given email
+
+    const isExist = oldUsers.find(({ email }) => email === rest.email);
+
+    if (isExist) {
+      return toast.error("This email already have an account");
+    }
+
+    // storing in local storage
 
     localStorage.setItem(
       "users",
@@ -73,7 +83,7 @@ export const Registration = () => {
       placeholder: "miliii",
     },
     {
-      value: frm.lName,
+      value: frm.LName,
       label: "Last Name",
       name: "lName",
 
