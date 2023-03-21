@@ -1,5 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
+import setUSer from "./redux/user/userSlice";
+import transReducer from "./redux/transaction/transSlice";
 
-export const store = configureStore({
-  reducer: {},
+const store = configureStore({
+  reducer: {
+    user: setUSer,
+    transaction: transReducer,
+  },
 });
+
+export default store;

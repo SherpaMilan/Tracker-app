@@ -1,8 +1,9 @@
 import React from "react";
+import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
 
 export const PrivateRouter = ({ children }) => {
-  const logedIn = false;
+  const { userInfo } = useSelector((state) => state.user);
 
-  return logedIn ? children : <Navigate to="/" />;
+  return userInfo.uid ? children : <Navigate to="/" />;
 };

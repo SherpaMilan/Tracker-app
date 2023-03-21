@@ -1,14 +1,49 @@
-import React from "react";
+import { async } from "@firebase/util";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
+import React, { useCallback, useEffect } from "react";
 import { Button, Table } from "react-bootstrap";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { db } from "../firebase/firebase-configuration";
+import { getTransaction } from "../redux/transaction/transAction";
 
-export const DTable = ({ list, handleOnDelete }) => {
-  const total = list.reduce((acc, item) => {
+export const DTable = () => {
+  const dispatch = useDispatch();
+  const { userInfo } = useSelector((state) => state.user);
+  const { trans } = useSelector((state) => state.transaction);
+
+  useEffect(() => {
+    dispatch(getTransaction(userInfo.uid));
+  }, [dispatch]);
+
+  const total = trans.reduce((acc, item) => {
     if (item.type === "income") {
       return acc + +item.amount;
     } else {
       return acc - +item.amount;
     }
   }, 0);
+
+  const handleOnDelete = async (id) => {
+    if (window.confirm("Are you sure?")) {
+      try {
+        await deleteDoc(doc(db, "transactions", id));
+        toast.success("Transaction has been deleted");
+
+        dispatch(getTransaction(userInfo.uid));
+      } catch (error) {
+        toast.error(error.message);
+      }
+    }
+  };
+
   console.log(total);
   return (
     <Table striped bordered hover className="mt-5">
@@ -23,7 +58,7 @@ export const DTable = ({ list, handleOnDelete }) => {
         </tr>
       </thead>
       <tbody>
-        {list.map((item, i) => (
+        {trans.map((item, i) => (
           <tr key={i}>
             <td>{i + 1}</td>
             <td>{item.date}</td>
@@ -35,9 +70,9 @@ export const DTable = ({ list, handleOnDelete }) => {
               {item.type === "expenses" && "-" + item.amount}
             </td>
 
-            <td>
-              <Button variant="danger" onClick={() => handleOnDelete(i)}>
-                Delete
+            <td className="text-center">
+              <Button variant="danger" onClick={() => handleOnDelete(item.id)}>
+                <i class="fa-solid fa-trash"></i>
               </Button>
             </td>
           </tr>

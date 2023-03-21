@@ -1,8 +1,13 @@
+import { addDoc, collection } from "firebase/firestore";
 import { useState } from "react";
 import { Button } from "react-bootstrap";
 import Col from "react-bootstrap/Col";
 import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { db } from "../firebase/firebase-configuration";
+import { getTransaction } from "../redux/transaction/transAction";
 
 const initialState = {
   type: "",
@@ -11,7 +16,10 @@ const initialState = {
   date: "",
 };
 export const MyForm = ({ addTransaction }) => {
+  const dispatch = useDispatch();
   const [formDt, setFormDt] = useState(initialState);
+
+  const { userInfo } = useSelector((state) => state.user);
 
   const handleOnChange = (e) => {
     const { name, value } = e.target;
@@ -22,28 +30,36 @@ export const MyForm = ({ addTransaction }) => {
     });
   };
 
-  const handleOnSubmit = (e) => {
+  const handleOnSubmit = async (e) => {
     e.preventDefault();
 
-    addTransaction(formDt);
-    setFormDt(initialState);
-  };
+    // TODO
+    // 1. send datat to fire store
+    const obj = { ...formDt, userId: userInfo.uid, createAt: Date.now() };
 
-  console.log(formDt);
+    // dispatch(postTransaction(obj));
+    const docRef = await addDoc(collection(db, "transactions"), obj);
+
+    if (docRef?.id) {
+      setFormDt(initialState);
+      dispatch(getTransaction(userInfo.uid));
+      // 2. if success on create transact, fetch data from store and mount on the redux
+      return toast.success("The transaction has been added");
+    }
+  };
 
   return (
     <Form onSubmit={handleOnSubmit} className="border p-3 rounded shadow-lg">
       <Row className="gap-2">
         <Col md={2}>
-          <Form.Select
-            name="type"
-            onChange={handleOnChange}
-            required
-            defaultValue={formDt.type}
-          >
-            <option value="">Type... </option>
-            <option value="income">Income</option>
-            <option value="expenses">Expenses</option>
+          <Form.Select name="type" onChange={handleOnChange} required>
+            <option value="">Select </option>
+            <option value="income" selected={formDt.type === "income"}>
+              Income
+            </option>
+            <option value="expenses" selected={formDt.type === "expenses"}>
+              Expenses
+            </option>
           </Form.Select>
         </Col>
         <Col md={4}>

@@ -1,14 +1,29 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { CustomInput } from "../components/CustomInput";
 import { toast } from "react-toastify";
+import { CustomInput } from "../components/CustomInput";
+import { setUser } from "../redux/user/userSlice";
+import { useDispatch, useSelector } from "react-redux";
 import { Layout } from "../components/Layout";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase/firebase-configuration";
 
 export const Login = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [formDt, setFormDt] = useState({});
+  const [fromDt, setFormDt] = useState({});
+  const { userInfo } = useSelector((state) => state.user);
+
+  // to remain in the samepage after refreshed if your are once logged in
+  onAuthStateChanged(auth, (user) => {
+    user && dispatch(setUser(user));
+  });
+
+  useEffect(() => {
+    userInfo?.uid && navigate("/dashboard");
+  }, [userInfo]);
 
   const inputs = [
     {
@@ -31,27 +46,52 @@ export const Login = () => {
     const { name, value } = e.target;
 
     setFormDt({
-      ...formDt,
+      ...fromDt,
       [name]: value,
     });
   };
 
-  const handleOnSubmit = (e) => {
+  const handleOnSubmit = async (e) => {
     e.preventDefault();
-    // console.log(formDt);
 
-    const usersStr = localStorage.getItem("users");
-    const userList = usersStr ? JSON.parse(usersStr) : [];
+    try {
+      const responsePending = signInWithEmailAndPassword(
+        auth,
+        fromDt.email,
+        fromDt.password
+      );
 
-    const user = userList.find(({ email, password }) => {
-      return email === formDt.email && password === formDt.password;
-    });
+      toast.promise(responsePending, {
+        pending: "Please wait...",
+      });
 
-    user?.email ? navigate("/dashboard") : toast.error("Invalid login details");
+      const { user } = await responsePending;
+
+      if (user?.uid) {
+        // sessionStorage.setItem("accessToken", user.accessToken);
+        // localStorage.setItem("refreshToken", user.refreshToken);
+        const userobj = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+        };
+
+        setTimeout(() => {
+          dispatch(setUser(userobj));
+        }, 2000);
+        return toast.success("Logged in successfully, Redirecting now");
+      }
+    } catch (error) {
+      let msg = error.message;
+      if (error.message.includes("(auth/wrong-password)")) {
+        msg = "Invalid login details";
+      }
+      toast.error(msg);
+    }
   };
 
   return (
-    <Layout>
+    <Layout user={userInfo}>
       <div className="w-50 m-auto">
         <Form
           onSubmit={handleOnSubmit}

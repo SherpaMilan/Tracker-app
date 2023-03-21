@@ -1,37 +1,45 @@
 import React, { useState } from "react";
 import { Button, Form } from "react-bootstrap";
-
+import { toast } from "react-toastify";
 import { CustomInput } from "../components/CustomInput";
 
 import { Layout } from "../components/Layout";
-import { toast } from "react-toastify";
-import { randomStrGenerator } from "../utils.js";
 
-//creating variables for making the form empty after submit
+import { auth, db } from "../firebase/firebase-configuration";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+
+import { doc, setDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setUser } from "../redux/user/userSlice";
+
 const initialState = {
   fName: "",
-  LName: "",
+  lName: "",
   email: "",
-  password: "",
-  confirmPassword: "",
+  password: "Aa12345",
+  confirmPassword: "Aa12345",
 };
 
 export const Registration = () => {
-  const [frm, setFrm] = useState({});
+  const navigate = useNavigate();
 
-  // creating state for finding the error
+  const dispatch = useDispatch();
+  const [frm, setFrm] = useState(initialState);
   const [error, setError] = useState("");
 
-  const handleOnChange = (e) => {
+  const handleOnchange = (e) => {
     const { name, value } = e.target;
 
     if (name === "password") {
       setError("");
-      value.length < 6 && setError("Password must be 6 characters long");
+
+      value.length < 6 &&
+        setError("Password must be at least 6 characters long");
 
       !/[0-9]/.test(value) && setError("Number is required");
-      !/[A-Z]/.test(value) && setError("Uppercase is required");
-      !/[a-z]/.test(value) && setError("Lowercase is required");
+      !/[A-Z]/.test(value) && setError("Upper case is required");
+      !/[a-z]/.test(value) && setError("Lower case is required");
     }
 
     setFrm({
@@ -40,37 +48,62 @@ export const Registration = () => {
     });
   };
 
-  const handleOnSubmit = (e) => {
+  const handleOnSubmit = async (e) => {
     e.preventDefault();
-    console.log(frm);
 
-    //using toastify for confirming password
     const { confirmPassword, ...rest } = frm;
+
     if (confirmPassword !== rest.password) {
-      return toast.error("Password do not match");
-    }
-    //reading data from local storage
-    const oldUsersStr = localStorage.getItem("users");
-    const oldUsers = oldUsersStr ? JSON.parse(oldUsersStr) : [];
-
-    //let's check if user already exist for the given email
-
-    const isExist = oldUsers.find(({ email }) => email === rest.email);
-
-    if (isExist) {
-      return toast.error("This email already have an account");
+      return toast.error("Password do not match!");
     }
 
-    // storing in local storage
+    try {
+      //create new user in the database
+      const responsePromise = createUserWithEmailAndPassword(
+        auth,
+        frm.email,
+        frm.password
+      );
 
-    localStorage.setItem(
-      "users",
-      JSON.stringify([...oldUsers, { ...rest, id: randomStrGenerator(6) }])
-    );
+      toast.promise(responsePromise, {
+        pending: "Please wait ....",
+      });
 
-    toast.success("Great News! Your account is created");
+      const { user } = await responsePromise;
+      if (user?.uid) {
+        //updating user displayName
+        updateProfile(user, {
+          displayName: frm.fName,
+        });
 
-    setFrm(initialState);
+        // adding recently created user in the firestore database
+        const userObj = {
+          fName: frm.fName,
+          lName: frm.lName,
+          email: frm.email,
+        };
+        await setDoc(doc(db, "users", user.uid), userObj);
+
+        toast.success("Your account is created, now redirecting to Dashboard");
+
+        dispatch(
+          setUser({
+            ...userObj,
+            uid: user.uid,
+          })
+        );
+        // redirect user automatically to dashboard in 3 seconds
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 3000);
+      }
+    } catch (error) {
+      let msg = error.message;
+      if (msg.includes("auth/email-already-in-use")) {
+        msg = "Email is already used by another user.";
+      }
+      toast.error(msg);
+    }
   };
 
   const inputs = [
@@ -78,17 +111,15 @@ export const Registration = () => {
       value: frm.fName,
       label: "First Name",
       name: "fName",
-
       required: true,
-      placeholder: "miliii",
+      placeholder: "sam",
     },
     {
-      value: frm.LName,
+      value: frm.lName,
       label: "Last Name",
       name: "lName",
-
       required: true,
-      placeholder: "sherpa",
+      placeholder: "smith",
     },
     {
       value: frm.email,
@@ -96,7 +127,7 @@ export const Registration = () => {
       name: "email",
       type: "email",
       required: true,
-      placeholder: "smilan@gmail.com",
+      placeholder: "sam@email.com",
     },
     {
       value: frm.password,
@@ -126,17 +157,14 @@ export const Registration = () => {
           <h3>Join our system now!</h3>
           <hr />
           {inputs.map((item, i) => (
-            <CustomInput key={i} {...item} onChange={handleOnChange} />
+            <CustomInput key={i} {...item} onChange={handleOnchange} />
           ))}
 
           <Form.Group>
             <Form.Text>
-              Must contain at least 6 characters(include min 1 upper case and 1
-              lowewr case)
+              you Password must contain at least 6 characters including at
+              leaset 1 number upper case and lower case
             </Form.Text>
-
-            {/* using javascript to show the error  */}
-
             {error && (
               <ul>
                 <li className="text-danger fw-bolder mt-3">{error}</li>
@@ -145,7 +173,6 @@ export const Registration = () => {
           </Form.Group>
 
           <div className="d-grid py-3">
-            {/* disabeling the register button in some case  */}
             <Button disabled={error} variant="primary" type="submit">
               Register
             </Button>
