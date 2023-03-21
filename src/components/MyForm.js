@@ -76,7 +76,7 @@ export const MyForm = ({ addTransaction }) => {
             name="amount"
             value={formDt.amount}
             type="number"
-            placeholder="233"
+            placeholder="amount"
             onChange={handleOnChange}
             required
           />
