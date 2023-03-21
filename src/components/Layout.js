@@ -12,7 +12,7 @@ export const Layout = ({ children }) => {
 
       {/* footer */}
       <footer className="mt-5 bg-dark text-light p-3 text-center">
-        &copy; Copy right all reserved 2023
+        &copy; Copy right all reserved year 2023
       </footer>
     </div>
   );
